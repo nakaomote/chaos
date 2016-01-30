@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -euE
+set -o pipefail
+
+cmd="${1:-}"
+
+i=0
+while : ; do
+  if [[ -f "${i}.png" ]]; then
+    echo "${i}"
+    i=$(($i+1));
+    continue
+  fi
+  read
+  if [[ -z ${REPLY} ]]; then
+    wget -O new "$(xclip -selection XA_PRIMARY -o)"
+  else
+    wget -O new "${REPLY}"
+  fi
+  type="$(file "new" | awk -F'(: |,)' ' { print $2 } ')"
+  new=""
+  echo "Type: '${type}'"
+  case "${type}" in
+    "JPEG image data")
+      mv "new" "new.jpg"
+      new="new.jpg"
+    ;;
+    "PNG image data")
+      mv "new" "new.png"
+      new="new.png"
+    ;;
+    "PC bitmap")
+      mv "new" "new.bmp"
+      new="new.bmp"
+    ;;
+    *)
+      echo "Unknown type!!!"
+      exit 1
+    ;;
+  esac
+  convert "${new}" "${i}.png"
+  rm "${new}"
+  rm -f last.png
+  ln -s "${i}.png" last.png
+  if [[ -n ${cmd} ]]; then
+    "${cmd}" last.png
+  fi
+  i=$(($i+1));
+done
